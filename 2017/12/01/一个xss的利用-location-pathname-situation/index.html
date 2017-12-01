@@ -1,0 +1,48 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description"><title>一个xss的利用(location.pathname situation) | b1ue</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/normalize/7.0.0/normalize.min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/1.0.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/pure/1.0.0/grids-responsive-min.css"><link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.7.0/css/font-awesome.min.css"><script type="text/javascript" src="//cdn.bootcss.com/jquery/3.2.1/jquery.min.js"></script><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">一个xss的利用(location.pathname situation)</h1><a id="logo" href="/.">b1ue</a><p class="description"></p></div><div id="nav-menu"><a href="/." class="current"><i class="fa fa-home"> 首页</i></a><a href="/archives/"><i class="fa fa-archive"> 归档</i></a><a href="/about/"><i class="fa fa-user"> 关于</i></a><a href="/atom.xml"><i class="fa fa-rss"> 订阅</i></a></div></div><div id="layout" class="pure-g"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">一个xss的利用(location.pathname situation)</h1><div class="post-meta">Dec 1, 2017</div><div class="post-content"><p>[+] Author:MagicBlue<br>[+] Team: NeSE security team<br>[+] From: http://<br>[+] Create: 2017-06-24</p>
+<h2 id="起因"><a href="#起因" class="headerlink" title="起因"></a>起因</h2><p>在weibo上看到neargle发了一个<a href="http://www.paulosyibelo.com/2015/04/facebooks-parse-dom-xss.html?m=1" target="_blank" rel="noopener">案例</a>里面是一个location.pathname利用的实际案例。自己原来的想法是这种类型的xss只会存在404页面那边。还有一个问题是$SERVER[‘PHP_SELF’]不进行urlencode,而window.location.pathname则会进行urlencode。<br><img src="media/14982290396252/image.png" alt="image"></p>
+<p>当时就去email to neargle 想探讨下这种类型在实战会怎么利用。</p>
+<p><code>neargle say
+确实如果用 location.pathname 这个点是会被url编码的，但是也并不是所有的浏览器都会被编码，而且每个浏览器编码的范围不一样，Opera之前的版本是不会编码&quot;和&lt;的。可以参考https://github.com/wisec/domxsswiki/wiki/location,-documentURI-and-URL-sources。而且就算是编码也得看输出的点是什么，要是放在如eval等函数里面还是可以直接利用的。
+    祝好0v0</code></p>
+<p>其实也就是具体问题具体分析～～运气很好,在做test的时候 恰好遇到了这么一个案例</p>
+<h2 id="test"><a href="#test" class="headerlink" title="test"></a>test</h2><p>漏洞发生在搜索框 类似 =&gt; <a href="http://www.xss.com/search/site/search_content。search_content可控" target="_blank" rel="noopener">http://www.xss.com/search/site/search_content。search_content可控</a> 但是它是从location.pathname取出来的。我们只能用特定的几个字符。参考如下(笔者在chrome下进行此次测试)</p>
+<p><img src="media/14982290396252/14982740164859.jpg" alt=""></p>
+<p>两个输出点逻辑(输入点 mmmagic)<br><figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">&lt;script&gt;</span><br><span class="line">_data = &#123;</span><br><span class="line"><span class="string">"level2"</span>: <span class="string">"5"</span>,</span><br><span class="line"><span class="string">"chapter1"</span>: <span class="string">""</span>,</span><br><span class="line"><span class="string">"chapter2"</span>: <span class="string">""</span>,</span><br><span class="line"><span class="string">"chapter3"</span>: <span class="string">""</span>,</span><br><span class="line"><span class="string">"title"</span>: <span class="string">"Internal Search"</span>,</span><br><span class="line"><span class="string">"mc"</span>: <span class="string">"mmmagic"</span>,</span><br><span class="line"><span class="string">"np"</span>: <span class="string">"1"</span>,&#125;</span><br><span class="line">&lt;<span class="regexp">/script&gt;</span></span><br><span class="line"><span class="regexp">&lt;script&gt;</span></span><br><span class="line"><span class="regexp">    &#123;$('#login-info').html('&lt;a href="/</span>p/login.php?p=<span class="regexp">/search/</span>site/mmmagic<span class="string">" target="</span>_blank<span class="string">"&gt;用户登录&lt;/a&gt;&lt;a href="</span>http:<span class="comment">//www//index.php?r=site/ProductPage&amp;PCODE=ZB&amp;utm_medium=online&amp;utm_source=frontpageheader&amp;utm_campaign=zbproductpage&amp;utm_term=tactical" target="_blank"&gt;订阅&lt;/a&gt;');&#125;</span></span><br><span class="line">&lt;<span class="regexp">/script&gt;</span></span><br></pre></td></tr></table></figure></p>
+<p>这个点没有进行合理过滤,所以导致了上面location.pathname可以用的字符我们都可以用。但是也是不太好利用。第一个输出点我没太思考怎么绕过。我把我的思考方式放在后面那个输出点</p>
+<p>我们没办法输入&gt;闭合a 标签 但是由于chrome 很好的容错性它会自动闭合tag 我们可以输入’，所以我们通过’)来闭合$(‘#’).html(‘’) xxxxxxx</p>
+<p>我们已经解决了第一步。但是这样的payload由于语法错误会报错然后不执行。我们要想办法注释后面的点</p>
+<ul>
+<li>通过单行注释 /  但是由于是在pathname里面 我们可以输入/ 但是我们只能输入一个/ 达不到注释的效果</li>
+<li>通过多行注释 /*  但是我们不可以输入}。来闭合前面的{</li>
+</ul>
+<p>以上两种方法均不能达到我们注释的目标(由于chrome在location.pathname支持的字符相比于其余主流浏览器支持的字符最少。所以只要chrome完美bypass。其余浏览器也没有问题了)</p>
+<p>javascript 语法</p>
+<blockquote>
+<p>x = (‘mmmagic”23333’)<br> “mmmagic”23333”</p>
+</blockquote>
+<p> 既然我们不能注释后面 由于后面的字符原本是在(‘’) 里面的 经过前面的闭合 这个时候为</p>
+<p><code>$(&#39;#&#39;).html(&#39;&lt;a href=&quot;/p/login.php?p=/search/site/&#39;)mmmagic&quot; target=&quot;_blank&quot;&gt;用户登录&lt;/a&gt;&lt;a href=&quot;http://www.//index.php?r=site/ProductPage&amp;PCODE=ZB&amp;utm_medium=online&amp;utm_source=frontpageheader&amp;utm_campaign=&amp;utm_term=tactical&quot; target=&quot;_blank&quot;&gt;xx&lt;/a&gt;&#39;);</code></p>
+<p>所以我们只需要把后面当作是一个string 赋值给一个变量就ok了</p>
+<p>alert payload</p>
+<p><a href="http://www.xss.com/search/site/&#39;)-alert(/mmmagic/);x=(&#39;mmmmagic" target="_blank" rel="noopener">http://www.xss.com/search/site/&#39;)-alert(/mmmagic/);x=(&#39;mmmmagic</a>,<br><img src="media/14982290396252/14982756410400.jpg" alt=""></p>
+<p>这个时候我们已经可以弹窗了。我们要朝着我们的终极目标前进,引入外部的js。这个时候已经很简单了</p>
+<blockquote>
+<p>search/site/‘)-eval(location.hash.substr(1));x=(‘mmmmagic,#  +js  方法不唯一</p>
+</blockquote>
+<h2 id="思考"><a href="#思考" class="headerlink" title="思考"></a>思考</h2><p>用户的输入点都是不可信的，所以过滤就显得尤为重要了。web的思考思维是怎么绕过,这其中一块就是具体问题具体分析，往往是看似不可以利用的漏洞。通过几种方式的组合导致可以利用。由于最近一直在思考怎么写xss fuzz tool 所以有一些想法</p>
+<ul>
+<li>传统的xss扫描器 都是基于payload进行fuzz 这样就存在一个问题，检测出来的肯定是存在漏洞。但是由于这种fuzz。它会导致很多可以利用的点会被忽略掉。这大概是由于fuzz tool不够智能吧</li>
+<li>漏洞出现的一个前提是没有过滤 或者是过滤的不充分。但是反过来思考。既然我们没办法构造一个基于大多数的漏洞模型。我们能不能提取出来一些完美的防御过滤模型，只要是符合这个模型的特点。我们就放行，反之就是肯定存在漏洞，这个办法的问题是误报率的问题以及人工成本的增加。人工手动验证的成本会大大增加。但是报着宁杀错杀一千也不放过一个的思维方式，这个是可取的</li>
+<li>打造一个自己的fuzz tool 一定要基于实战 基于漏洞的打磨。但是我们不可以把每种漏洞出现的情况都纳到我们的模型，我们只能通过人工搜集,把一些典型的做成模型。然后让fuzz tools 以后自己分析，我觉得基于语义 基于上下文的fuzz才是未来。</li>
+</ul>
+<p>比如 它有这种智能的检测手段<br>   <code>&lt;script&gt;
+        document.path.name(&#39;xxxxxxxxxxx&#39;)；
+    &lt;/script&gt;</code></p>
+<p>如果fuzz tool 发现我们可控的点在xxxxxx处</p>
+<ul>
+<li>它要知道自己是处在js code环境下</li>
+<li>它要知道它要闭合’)//   or  <code>&lt;/script&gt;&lt;img/src=1&gt;</code> or  ‘-alert(1)-‘ 来进行test</li>
+<li>它需要基于语义 自动调整需要闭合的点。</li>
+</ul>
+<p>此刻大概就是这么多想法，要走的路还有很多。但是自己确实是想做出点东西了。</p>
+</div><div class="tags"></div></div></div></div><div class="pure-u-1-4 hidden_mid_and_down"><div id="sidebar"><div class="widget"><form action="//www.google.com/search" method="get" accept-charset="utf-8" target="_blank" class="search-form"><input type="text" name="q" maxlength="20" placeholder="Search"/><input type="hidden" name="sitesearch" value="https://magicbluech.github.io"/></form></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> 最近文章</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2017/12/01/一个xss的利用-location-pathname-situation/">一个xss的利用(location.pathname situation)</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> 友情链接</i></div><ul></ul><a href="http://www.virzz.com/" title="virink" target="_blank">virink</a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">Copyright © 2017 <a href="/." rel="nofollow">b1ue.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a id="rocket" href="#top" class="show"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//cdn.bootcss.com/fancybox/3.1.20/jquery.fancybox.min.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/fancybox/3.1.20/jquery.fancybox.min.css"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>
